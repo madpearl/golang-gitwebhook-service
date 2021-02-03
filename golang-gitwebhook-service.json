@@ -1,0 +1,167 @@
+{
+  "kind": "Template",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "golang-gitwebhook-interface",
+    "annotations": {
+      "description": "Git Webhook Interface",
+      "tags": "golang",
+      "iconClass": "icon-golang"
+    }
+  },
+  "parameters": [
+    {
+      "name": "GOLANG_IMAGE",
+      "value": "quay.io/golang-gitwebhook-interface",
+      "description": "The name of the golang image",
+      "required": true
+    },
+    {
+      "name": "GOLANG_IMAGE_VERSION",
+      "value": "1.15.3",
+      "description": "The version for the golang image",
+      "required": true
+    },
+    {
+      "name": "LOG_LEVEL",
+      "value": "trace",
+      "description": "A default log level for all components",
+      "required": true
+    },
+    {
+      "name": "VERSION",
+      "value": "1.0.1",
+      "description": "The current version",
+      "required": true
+    },
+    {
+      "name": "SERVER_PORT",
+      "value": "9000",
+      "description": "A default port for the microservice",
+      "required": true
+    },
+    {
+      "name": "NAME",
+      "value": "golang-gitwebhook-interface",
+      "description": "A default name for the microservice",
+      "required": true
+    }
+  ],
+  "objects": [
+    {
+      "kind": "Service",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "golang-gitwebhook-interface",
+        "labels": {
+          "name": "golang-gitwebhook-interface"
+        }
+      },
+      "spec": {
+        "selector": {
+          "name": "golang-gitwebhook-interface"
+        },
+        "ports": [
+          {
+            "name": "golang-gitwebhook-interface-port",
+            "port": 9000,
+            "targetPort": 9000,
+            "protocol" : "TCP"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "DeploymentConfig",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "golang-gitwebhook-interface",
+        "labels": {
+          "name": "golang-gitwebhook-interface"
+        }
+      },
+      "spec": {
+        "triggers": [
+          {
+            "type": "ConfigChange"
+          }
+        ],
+        "replicas": 1,
+        "selector": {
+          "name": "golang-gitwebhook-interface"
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "name": "golang-gitwebhook-interface"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "golang-gitwebhook-interface",
+                "image": "${GOLANG_IMAGE}:${GOLANG_IMAGE_VERSION}",
+                "ports": [
+                  {
+                    "containerPort": 9000
+                  }
+                ],
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/api/v2/sys/info/isalive",
+                    "port": 9000
+                  },
+                  "initialDelaySeconds": 55,
+                  "timeoutSeconds": 5,
+                  "periodSeconds": 60,
+                  "successThreshold": 1,
+                  "failureThreshold": 2
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/api/v2/sys/info/isalive",
+                    "port": 9000
+                  },
+                  "initialDelaySeconds": 0,
+                  "timeoutSeconds": 5,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 1
+                },
+                "env": [
+                  {
+                    "name": "LOG_LEVEL",
+                    "value": "${LOG_LEVEL}"
+                  },
+                  {
+                    "name": "VERSION",
+                    "value": "${VERSION}"
+                  },
+                  {
+                    "name": "SERVER_PORT",
+                    "value": "${SERVER_PORT}"
+                  },
+                  {
+                    "name": "NAME",
+                    "value": "${NAME}"
+                  }
+                ],
+                "imagePullPolicy": "Always",
+                "resources": {
+                  "limits": {
+                    "cpu": "100m",
+                    "memory": "100Mi"
+                  },
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "100Mi"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

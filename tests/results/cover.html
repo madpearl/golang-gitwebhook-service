@@ -1,0 +1,379 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>handlers: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/fake-connectors.go (88.9%)</option>
+				
+				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handlers.go (94.5%)</option>
+				
+				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// +build fake
+
+package handlers
+
+import (
+        "bytes"
+        "errors"
+        "fmt"
+        "io/ioutil"
+        "net/http"
+
+        "github.com/luigizuccarelli/golang-gitwebhook-service/pkg/connectors"
+        "github.com/microlib/simple"
+)
+
+type errReader int
+
+func (errReader) Read(p []byte) (n int, err error) <span class="cov8" title="1">{
+        return 0, errors.New("Inject (force) readAll test error")
+}</span>
+
+type FakeConnectors struct {
+        Logger *simple.Logger
+        Http   *http.Client
+        Name   string
+        Force  string
+}
+
+// Do - used for testing
+func (c *FakeConnectors) Do(req *http.Request) (*http.Response, error) <span class="cov8" title="1">{
+        if c.Force == "true" </span><span class="cov8" title="1">{
+                return nil, errors.New("forced http error")
+        }</span>
+        <span class="cov8" title="1">return c.Http.Do(req)</span>
+}
+
+// RoundTripFunc .
+type RoundTripFunc func(req *http.Request) *http.Response
+
+// RoundTrip .
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) <span class="cov8" title="1">{
+        return f(req), nil
+}</span>
+
+//NewTestClient returns *http.Client with Transport replaced to avoid making real calls
+func NewHttpTestClient(fn RoundTripFunc) *http.Client <span class="cov8" title="1">{
+        return &amp;http.Client{
+                Transport: RoundTripFunc(fn),
+        }
+}</span>
+
+// logger wrapper
+func (r *FakeConnectors) Error(msg string, val ...interface{}) <span class="cov8" title="1">{
+        r.Logger.Error(fmt.Sprintf(msg, val...))
+}</span>
+
+func (r *FakeConnectors) Info(msg string, val ...interface{}) <span class="cov8" title="1">{
+        r.Logger.Info(fmt.Sprintf(msg, val...))
+}</span>
+
+func (r *FakeConnectors) Debug(msg string, val ...interface{}) <span class="cov8" title="1">{
+        r.Logger.Debug(fmt.Sprintf(msg, val...))
+}</span>
+
+func (r *FakeConnectors) Trace(msg string, val ...interface{}) <span class="cov8" title="1">{
+        r.Logger.Trace(fmt.Sprintf(msg, val...))
+}</span>
+
+// NewTestConnectors - inject our test connectors
+func NewTestConnectors(filename string, code int, force string, logger *simple.Logger) connectors.Clients <span class="cov8" title="1">{
+
+        // we first load the json payload to simulate a call to middleware
+        // for now just ignore failures.
+        data, err := ioutil.ReadFile(filename)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error(fmt.Sprintf("file data %v\n", err))
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">httpclient := NewHttpTestClient(func(req *http.Request) *http.Response </span><span class="cov8" title="1">{
+                return &amp;http.Response{
+                        StatusCode: code,
+                        // Send response to be tested
+
+                        Body: ioutil.NopCloser(bytes.NewBufferString(string(data))),
+                        // Must be set to non-nil value or it panics
+                        Header: make(http.Header),
+                }
+        }</span>)
+
+        <span class="cov8" title="1">conn := &amp;FakeConnectors{Http: httpclient, Logger: logger, Force: force, Name: "FakeConnectors"}
+        return conn</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package handlers
+
+import (
+        "bytes"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io/ioutil"
+        "net/http"
+        "os"
+        "strconv"
+
+        "github.com/luigizuccarelli/golang-gitwebhook-service/pkg/connectors"
+        "github.com/luigizuccarelli/golang-gitwebhook-service/pkg/schema"
+)
+
+const (
+        CONTENTTYPE     string = "Content-Type"
+        APPLICATIONJSON string = "application/json"
+)
+
+func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) <span class="cov8" title="1">{
+        var git *schema.GiteaSchema
+        var mapping *schema.MapBinding
+        var url string
+
+        body, err := ioutil.ReadAll(r.Body)
+        con.Trace("Input data %s", string(body))
+        if err != nil </span><span class="cov8" title="1">{
+                con.Error("SimpleHandler could not read body data %v", err)
+                resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("SimpleHandler could not read body data %v", err) + "\"}"
+                w.WriteHeader(http.StatusInternalServerError)
+                fmt.Fprintf(w, resp)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = json.Unmarshal(body, &amp;git)
+        if err != nil </span><span class="cov8" title="1">{
+                con.Error("SimpleHandler could not unmarshal to struct %v", err)
+                resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("SimpleHandler could not unmarshal struct %v", err) + "\"}"
+                w.WriteHeader(http.StatusInternalServerError)
+                fmt.Fprintf(w, resp)
+                return
+        }</span>
+
+        // we now post to our various eventlisteners
+        <span class="cov8" title="1">if git.Action == "published" || git.Action == "closed" </span><span class="cov8" title="1">{
+                // only post on merged true
+                if git.PullRequest.Merged </span><span class="cov8" title="1">{
+                        // post to the dev eventlistener - for our normal cicd dev build
+                        mapping = &amp;schema.MapBinding{
+                                RepoUrl:    git.Repository.CloneURL,
+                                RepoName:   git.Repository.Name,
+                                RepoHash:   git.PullRequest.MergeCommitSha,
+                                ActorName:  git.PullRequest.User.Login,
+                                ActorEmail: git.PullRequest.User.Email,
+                                Message:    git.PullRequest.Title,
+                        }
+                        url = os.Getenv("URL_DEV")
+                }</span>
+
+                <span class="cov8" title="1">if git.Action == "published" </span><span class="cov8" title="1">{
+                        // check for the prerelease field
+                        if git.Release.Prerelease </span><span class="cov8" title="1">{
+                                // post to the uat eventlistener
+                                mapping = &amp;schema.MapBinding{
+                                        RepoUrl:    git.Repository.CloneURL,
+                                        RepoName:   git.Repository.Name,
+                                        RepoHash:   git.Release.TargetCommitish,
+                                        ActorName:  git.Release.Author.Login,
+                                        ActorEmail: git.Release.Author.Email,
+                                        Message:    git.Release.Name + " " + git.Release.Body,
+                                        TagVersion: git.Release.TagName,
+                                }
+                                url = os.Getenv("URL_UAT")
+                        }</span> else<span class="cov8" title="1"> {
+                                // post to prod eventlistener
+                                mapping = &amp;schema.MapBinding{
+                                        RepoUrl:    git.Repository.CloneURL,
+                                        RepoName:   git.Repository.Name,
+                                        RepoHash:   git.Release.TargetCommitish,
+                                        ActorName:  git.Release.Author.Login,
+                                        ActorEmail: git.Release.Author.Email,
+                                        Message:    git.Release.Name + " " + git.Release.Body,
+                                        TagVersion: git.Release.TagName,
+                                }
+                                url = os.Getenv("URL_PROD")
+                        }</span>
+                }
+                <span class="cov8" title="1">_, err := makePostRequest(url, APPLICATIONJSON, mapping, con)
+                if err != nil </span><span class="cov8" title="1">{
+                        resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("Request failed %v", err) + "\"}"
+                        w.WriteHeader(http.StatusInternalServerError)
+                        fmt.Fprintf(w, resp)
+                        return
+                }</span>
+                <span class="cov8" title="1">resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
+                w.WriteHeader(http.StatusOK)
+                con.Debug("Result struct for gitea webhook %v", mapping)
+                fmt.Fprintf(w, string(resp))</span>
+        } else<span class="cov0" title="0"> {
+                con.Debug("NOP - no merge or release")
+        }</span>
+}
+
+func IsAlive(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        fmt.Fprintf(w, "{\"version\":\"v1.0.1\"}")
+}</span>
+
+// makePostRequest - private utility function for POST
+func makePostRequest(url string, contentType string, mb *schema.MapBinding, con connectors.Clients) ([]byte, error) <span class="cov8" title="1">{
+        var b []byte
+
+        data, _ := json.MarshalIndent(mb, "", "    ")
+        req, _ := http.NewRequest("POST", url, bytes.NewBuffer(data))
+        req.Header.Set(CONTENTTYPE, contentType)
+        con.Info("Function makeRequest %s", url)
+        resp, err := con.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                con.Error("Function makePostRequest http request %v", err)
+                return b, err
+        }</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+        if resp.StatusCode &lt;= http.StatusAccepted </span><span class="cov8" title="1">{
+                con.Debug("Function makePostRequest response from middleware %d", resp.StatusCode)
+                return []byte("ok"), nil
+        }</span>
+        <span class="cov0" title="0">con.Error("Function makePostRequest response code %v", resp.StatusCode)
+        return []byte("ko"), errors.New(strconv.Itoa(resp.StatusCode))</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package validator
+
+import (
+        "fmt"
+        "os"
+        "strconv"
+        "strings"
+
+        "github.com/microlib/simple"
+)
+
+// checkEnvars - private function, iterates through each item and checks the required field
+func checkEnvar(item string, logger *simple.Logger) error <span class="cov8" title="1">{
+        name := strings.Split(item, ",")[0]
+        required, _ := strconv.ParseBool(strings.Split(item, ",")[1])
+        logger.Trace(fmt.Sprintf("name %s : required %t", name, required))
+        if os.Getenv(name) == "" </span><span class="cov8" title="1">{
+                if required </span><span class="cov8" title="1">{
+                        logger.Error(fmt.Sprintf("%s envar is mandatory please set it", name))
+                        return fmt.Errorf(fmt.Sprintf("%s envar is mandatory please set it", name))
+                }</span>
+
+                <span class="cov8" title="1">logger.Error(fmt.Sprintf("%s envar is empty please set it", name))</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ValidateEnvars : public call that groups all envar validations
+// These envars are set via the openshift template
+func ValidateEnvars(logger *simple.Logger) error <span class="cov8" title="1">{
+        items := []string{
+                "LOG_LEVEL,false",
+                "VERSION,true",
+                "SERVER_PORT,true",
+                "NAME,true",
+                "URL_DEV,true",
+                "URL_UAT,true",
+                "URL_PROD,true",
+        }
+        for x := range items </span><span class="cov8" title="1">{
+                if err := checkEnvar(items[x], logger); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
