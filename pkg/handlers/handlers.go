@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/luigizuccarelli/golang-gitwebhook-service/pkg/connectors"
 	"github.com/luigizuccarelli/golang-gitwebhook-service/pkg/schema"
@@ -42,6 +43,19 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 		fmt.Fprintf(w, resp)
 		return
 	}
+
+	con.Trace("SimpleHandler WEBHOOK_SECRET : %s : %s:", git.Secret, os.Getenv("WEBHOOK_SECRET"))
+	apikey := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
+	// first check secret
+	if git.Secret != apikey {
+		con.Error("SimpleHandler api secret invalid")
+		resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"SimpleHandler api secret invalid\"}"
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, resp)
+		return
+	}
+
+	con.Debug("Mapping struct %v", git)
 
 	// we now post to our various eventlisteners
 	if git.Action == "published" || git.Action == "closed" {
@@ -87,7 +101,15 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 				url = os.Getenv("URL_PROD")
 			}
 		}
-		_, err := makePostRequest(url, APPLICATIONJSON, mapping, con)
+		infra, err := getInfraRepo(mapping.RepoName)
+		if err != nil {
+			resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf(" %v", err) + "\"}"
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, resp)
+			return
+		}
+		mapping.InfraRepo = infra
+		_, err = makePostRequest(url, APPLICATIONJSON, mapping, con)
 		if err != nil {
 			resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("Request failed %v", err) + "\"}"
 			w.WriteHeader(http.StatusInternalServerError)
@@ -127,4 +149,21 @@ func makePostRequest(url string, contentType string, mb *schema.MapBinding, con 
 	}
 	con.Error("Function makePostRequest response code %v", resp.StatusCode)
 	return []byte("ko"), errors.New(strconv.Itoa(resp.StatusCode))
+}
+
+func getInfraRepo(name string) (string, error) {
+	var result string
+
+	repos := strings.Split(os.Getenv("REPO_MAPPING"), "\n")
+	prefix := strings.Split(name, "-")
+	for x, _ := range repos {
+		if strings.Contains(repos[x], prefix[0]) {
+			result = strings.Split(repos[x], "=")[1]
+			break
+		}
+	}
+	if result == "" {
+		return "", errors.New("Infra repo not found")
+	}
+	return result, nil
 }

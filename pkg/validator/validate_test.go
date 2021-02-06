@@ -26,6 +26,8 @@ func TestEnvars(t *testing.T) {
 		os.Setenv("URL_UAT", "localhost")
 		os.Setenv("URL_PROD", "localhost")
 		os.Setenv("VERSION", "1.0.3")
+		os.Setenv("WEBHOOK_SECRET", "ewqewqe")
+		os.Setenv("REPO_MAPPING", "test")
 		os.Setenv("NAME", "test")
 		err := ValidateEnvars(logger)
 		if err != nil {

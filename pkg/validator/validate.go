@@ -33,6 +33,8 @@ func ValidateEnvars(logger *simple.Logger) error {
 		"VERSION,true",
 		"SERVER_PORT,true",
 		"NAME,true",
+		"WEBHOOK_SECRET,true",
+		"REPO_MAPPING,true",
 		"URL_DEV,true",
 		"URL_UAT,true",
 		"URL_PROD,true",

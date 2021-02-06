@@ -2,9 +2,9 @@
   "kind": "Template",
   "apiVersion": "v1",
   "metadata": {
-    "name": "golang-gitwebhook-interface",
+    "name": "golang-gitwebhook-service",
     "annotations": {
-      "description": "Git Webhook Interface",
+      "description": "Git Webhook Service",
       "tags": "golang",
       "iconClass": "icon-golang"
     }
@@ -12,13 +12,13 @@
   "parameters": [
     {
       "name": "GOLANG_IMAGE",
-      "value": "quay.io/golang-gitwebhook-interface",
+      "value": "quay.io/lzuccarelli_14west/golang-gitwebhook-service",
       "description": "The name of the golang image",
       "required": true
     },
     {
       "name": "GOLANG_IMAGE_VERSION",
-      "value": "1.15.3",
+      "value": "1.15.6",
       "description": "The version for the golang image",
       "required": true
     },
@@ -42,28 +42,47 @@
     },
     {
       "name": "NAME",
-      "value": "golang-gitwebhook-interface",
+      "value": "golang-gitwebhook-service",
       "description": "A default name for the microservice",
       "required": true
+    },
+    {
+      "name": "URL_DEV",
+      "value": "http://el-eventlistener-dev:8080",
+      "description": "Link to dev event listener",
+      "required": true
+    },
+    {
+      "name": "URL_UAT",
+      "value": "http://el-eventlistener-uat:8080",
+      "description": "Link to uat event listener",
+      "required": true
+    },
+    {
+      "name": "URL_PROD",
+      "value": "http://el-eventlistener-prod:8080",
+      "description": "Link to prod event listener",
+      "required": true
     }
+    
   ],
   "objects": [
     {
       "kind": "Service",
       "apiVersion": "v1",
       "metadata": {
-        "name": "golang-gitwebhook-interface",
+        "name": "golang-gitwebhook-service",
         "labels": {
-          "name": "golang-gitwebhook-interface"
+          "name": "golang-gitwebhook-service"
         }
       },
       "spec": {
         "selector": {
-          "name": "golang-gitwebhook-interface"
+          "name": "golang-gitwebhook-service"
         },
         "ports": [
           {
-            "name": "golang-gitwebhook-interface-port",
+            "name": "golang-gitwebhook-service-port",
             "port": 9000,
             "targetPort": 9000,
             "protocol" : "TCP"
@@ -75,9 +94,9 @@
       "kind": "DeploymentConfig",
       "apiVersion": "v1",
       "metadata": {
-        "name": "golang-gitwebhook-interface",
+        "name": "golang-gitwebhook-service",
         "labels": {
-          "name": "golang-gitwebhook-interface"
+          "name": "golang-gitwebhook-service"
         }
       },
       "spec": {
@@ -88,18 +107,18 @@
         ],
         "replicas": 1,
         "selector": {
-          "name": "golang-gitwebhook-interface"
+          "name": "golang-gitwebhook-service"
         },
         "template": {
           "metadata": {
             "labels": {
-              "name": "golang-gitwebhook-interface"
+              "name": "golang-gitwebhook-service"
             }
           },
           "spec": {
             "containers": [
               {
-                "name": "golang-gitwebhook-interface",
+                "name": "golang-gitwebhook-service",
                 "image": "${GOLANG_IMAGE}:${GOLANG_IMAGE_VERSION}",
                 "ports": [
                   {
@@ -108,7 +127,7 @@
                 ],
                 "livenessProbe": {
                   "httpGet": {
-                    "path": "/api/v2/sys/info/isalive",
+                    "path": "/isalive",
                     "port": 9000
                   },
                   "initialDelaySeconds": 55,
@@ -119,7 +138,7 @@
                 },
                 "readinessProbe": {
                   "httpGet": {
-                    "path": "/api/v2/sys/info/isalive",
+                    "path": "/isalive",
                     "port": 9000
                   },
                   "initialDelaySeconds": 0,
@@ -144,6 +163,27 @@
                   {
                     "name": "NAME",
                     "value": "${NAME}"
+                  },
+                  {
+                    "name": "URL_DEV",
+                    "value": "${URL_DEV}"
+                  },
+                  {
+                    "name": "URL_UAT",
+                    "value": "${URL_UAT}"
+                  },
+                  {
+                    "name": "URL_PROD",
+                    "value": "${URL_PROD}"
+                  },
+                  {
+                    "name": "WEBHOOK_SECRET",
+                     "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "webhook-secret",
+                        "key": "api-key"
+                      }
+                    }
                   }
                 ],
                 "imagePullPolicy": "Always",

@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/fake-connectors.go (88.9%)</option>
 				
-				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handlers.go (94.5%)</option>
+				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handlers.go (90.1%)</option>
 				
 				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (100.0%)</option>
 				
@@ -178,6 +178,7 @@ import (
         "net/http"
         "os"
         "strconv"
+        "strings"
 
         "github.com/luigizuccarelli/golang-gitwebhook-service/pkg/connectors"
         "github.com/luigizuccarelli/golang-gitwebhook-service/pkg/schema"
@@ -212,8 +213,21 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
                 return
         }</span>
 
+        <span class="cov8" title="1">con.Trace("SimpleHandler WEBHOOK_SECRET : %s : %s:", git.Secret, os.Getenv("WEBHOOK_SECRET"))
+        apikey := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
+        // first check secret
+        if git.Secret != apikey </span><span class="cov8" title="1">{
+                con.Error("SimpleHandler api secret invalid")
+                resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"SimpleHandler api secret invalid\"}"
+                w.WriteHeader(http.StatusInternalServerError)
+                fmt.Fprintf(w, resp)
+                return
+        }</span>
+
+        <span class="cov8" title="1">con.Debug("Mapping struct %v", git)
+
         // we now post to our various eventlisteners
-        <span class="cov8" title="1">if git.Action == "published" || git.Action == "closed" </span><span class="cov8" title="1">{
+        if git.Action == "published" || git.Action == "closed" </span><span class="cov8" title="1">{
                 // only post on merged true
                 if git.PullRequest.Merged </span><span class="cov8" title="1">{
                         // post to the dev eventlistener - for our normal cicd dev build
@@ -256,7 +270,15 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
                                 url = os.Getenv("URL_PROD")
                         }</span>
                 }
-                <span class="cov8" title="1">_, err := makePostRequest(url, APPLICATIONJSON, mapping, con)
+                <span class="cov8" title="1">infra, err := getInfraRepo(mapping.RepoName)
+                if err != nil </span><span class="cov0" title="0">{
+                        resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf(" %v", err) + "\"}"
+                        w.WriteHeader(http.StatusInternalServerError)
+                        fmt.Fprintf(w, resp)
+                        return
+                }</span>
+                <span class="cov8" title="1">mapping.InfraRepo = infra
+                _, err = makePostRequest(url, APPLICATIONJSON, mapping, con)
                 if err != nil </span><span class="cov8" title="1">{
                         resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("Request failed %v", err) + "\"}"
                         w.WriteHeader(http.StatusInternalServerError)
@@ -297,6 +319,23 @@ func makePostRequest(url string, contentType string, mb *schema.MapBinding, con 
         <span class="cov0" title="0">con.Error("Function makePostRequest response code %v", resp.StatusCode)
         return []byte("ko"), errors.New(strconv.Itoa(resp.StatusCode))</span>
 }
+
+func getInfraRepo(name string) (string, error) <span class="cov8" title="1">{
+        var result string
+
+        repos := strings.Split(os.Getenv("REPO_MAPPING"), "\n")
+        prefix := strings.Split(name, "-")
+        for x, _ := range repos </span><span class="cov8" title="1">{
+                if strings.Contains(repos[x], prefix[0]) </span><span class="cov8" title="1">{
+                        result = strings.Split(repos[x], "=")[1]
+                        break</span>
+                }
+        }
+        <span class="cov8" title="1">if result == "" </span><span class="cov0" title="0">{
+                return "", errors.New("Infra repo not found")
+        }</span>
+        <span class="cov8" title="1">return result, nil</span>
+}
 </pre>
 		
 		<pre class="file" id="file2" style="display: none">package validator
@@ -334,6 +373,8 @@ func ValidateEnvars(logger *simple.Logger) error <span class="cov8" title="1">{
                 "VERSION,true",
                 "SERVER_PORT,true",
                 "NAME,true",
+                "WEBHOOK_SECRET,true",
+                "REPO_MAPPING,true",
                 "URL_DEV,true",
                 "URL_UAT,true",
                 "URL_PROD,true",

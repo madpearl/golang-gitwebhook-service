@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/microlib/simple"
@@ -18,6 +19,9 @@ import (
 func TestHandlers(t *testing.T) {
 
 	var logger = &simple.Logger{Level: "info"}
+
+	os.Setenv("WEBHOOK_SECRET", "Threefld2020")
+	os.Setenv("REPO_MAPPING", "abc=xyz\ngolang-simple-oc4service=infra-golang\ntest=test")
 
 	t.Run("IsAlive : should pass", func(t *testing.T) {
 		var STATUS int = 200
@@ -149,6 +153,29 @@ func TestHandlers(t *testing.T) {
 	t.Run("SimpleHandler : should fail (force http error)", func(t *testing.T) {
 		var STATUS int = 500
 
+		requestPayload, _ := ioutil.ReadFile("../../tests/prod-release.json")
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
+		conn := NewTestConnectors("../../tests/response.json", STATUS, "true", logger)
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			SimpleHandler(w, r, conn)
+		})
+		handler.ServeHTTP(rr, req)
+		body, e := ioutil.ReadAll(rr.Body)
+		if e != nil {
+			t.Fatalf("Should not fail : found error %v", e)
+		}
+		logger.Trace(fmt.Sprintf("Response %s", string(body)))
+		// ignore errors here
+		if rr.Code != STATUS {
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+		}
+	})
+
+	t.Run("SimpleHandler : should fail (api secret)", func(t *testing.T) {
+
+		var STATUS int = 500
+		os.Setenv("WEBHOOK_SECRET", "")
 		requestPayload, _ := ioutil.ReadFile("../../tests/prod-release.json")
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))

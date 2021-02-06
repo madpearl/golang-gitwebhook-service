@@ -18,7 +18,8 @@ type MapBinding struct {
 	ActorName  string `json:"actorname"`
 	ActorEmail string `json:"actoremail"`
 	Message    string `json:"message"`
-	TagVersion string `json:"version,omitempty"`
+	TagVersion string `json:"tagversion,omitempty"`
+	InfraRepo  string `json:"infrarepo"`
 }
 
 type GiteaSchema struct {

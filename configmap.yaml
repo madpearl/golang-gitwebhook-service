@@ -1,0 +1,9 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: infra-mapping
+  namespace: golang-cicd
+data:
+  repo: >-
+    eventbus-grpc=http://lmzsoftware.com/lzuccarelli/infra-eventbus-grpc.git
+
