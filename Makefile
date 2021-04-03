@@ -24,7 +24,7 @@ clean:
 	go clean ./...
 
 container:
-	podman build -t  quay.io/14west/golang-gitwebhook-service:1.15.3 .
+	podman build -t  quay.io/luigizuccarelli/golang-gitwebhook-service:1.16.3 .
 
 push:
-	podman push quay.io/14west/golang-gitwebhook-service:1.15.3 
+	podman push --authfile=/home/lzuccarelli/config.json quay.io/luigizuccarelli/golang-gitwebhook-service:1.16.3 
