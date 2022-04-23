@@ -31,7 +31,7 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 		con.Error("SimpleHandler could not read body data %v", err)
 		resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("SimpleHandler could not read body data %v", err) + "\"}"
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, resp)
+		fmt.Fprintf(w, "%s", resp)
 		return
 	}
 
@@ -40,7 +40,7 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 		con.Error("SimpleHandler could not unmarshal to struct %v", err)
 		resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("SimpleHandler could not unmarshal struct %v", err) + "\"}"
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, resp)
+		fmt.Fprintf(w, "%s", resp)
 		return
 	}
 
@@ -51,7 +51,7 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 		con.Error("SimpleHandler api secret invalid")
 		resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"SimpleHandler api secret invalid\"}"
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, resp)
+		fmt.Fprintf(w, "%s", resp)
 		return
 	}
 
@@ -105,7 +105,7 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 		if err != nil {
 			resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf(" %v", err) + "\"}"
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, resp)
+			fmt.Fprintf(w, "%s", resp)
 			return
 		}
 		mapping.InfraRepo = infra
@@ -113,13 +113,13 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 		if err != nil {
 			resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("Request failed %v", err) + "\"}"
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, resp)
+			fmt.Fprintf(w, "%s", resp)
 			return
 		}
 		resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
 		w.WriteHeader(http.StatusOK)
 		con.Debug("Result struct for gitea webhook %v", mapping)
-		fmt.Fprintf(w, string(resp))
+		fmt.Fprintf(w, "%s", string(resp))
 	} else {
 		con.Debug("NOP - no merge or release")
 	}
@@ -156,7 +156,7 @@ func getInfraRepo(name string) (string, error) {
 
 	repos := strings.Split(os.Getenv("REPO_MAPPING"), "\n")
 	prefix := strings.Split(name, "-")
-	for x, _ := range repos {
+	for x := range repos {
 		if strings.Contains(repos[x], prefix[0]) {
 			result = strings.Split(repos[x], "=")[1]
 			break
