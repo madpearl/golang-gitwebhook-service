@@ -59,7 +59,7 @@
 				
 				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handlers.go (90.1%)</option>
 				
-				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (92.9%)</option>
+				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -187,6 +187,7 @@ import (
 const (
         CONTENTTYPE     string = "Content-Type"
         APPLICATIONJSON string = "application/json"
+        ERRMSG          string = "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\""
 )
 
 func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) <span class="cov8" title="1">{
@@ -198,18 +199,18 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
         con.Trace("Input data %s", string(body))
         if err != nil </span><span class="cov8" title="1">{
                 con.Error("SimpleHandler could not read body data %v", err)
-                resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("SimpleHandler could not read body data %v", err) + "\"}"
+                resp := ERRMSG + fmt.Sprintf("\"SimpleHandler could not read body data %v", err) + "\"}"
                 w.WriteHeader(http.StatusInternalServerError)
-                fmt.Fprintf(w, resp)
+                fmt.Fprintf(w, "%s", resp)
                 return
         }</span>
 
         <span class="cov8" title="1">err = json.Unmarshal(body, &amp;git)
         if err != nil </span><span class="cov8" title="1">{
                 con.Error("SimpleHandler could not unmarshal to struct %v", err)
-                resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("SimpleHandler could not unmarshal struct %v", err) + "\"}"
+                resp := ERRMSG + fmt.Sprintf("\"SimpleHandler could not unmarshal struct %v", err) + "\"}"
                 w.WriteHeader(http.StatusInternalServerError)
-                fmt.Fprintf(w, resp)
+                fmt.Fprintf(w, "%s", resp)
                 return
         }</span>
 
@@ -218,9 +219,9 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
         // first check secret
         if git.Secret != apikey </span><span class="cov8" title="1">{
                 con.Error("SimpleHandler api secret invalid")
-                resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"SimpleHandler api secret invalid\"}"
+                resp := ERRMSG + "\"SimpleHandler api secret invalid\"}"
                 w.WriteHeader(http.StatusInternalServerError)
-                fmt.Fprintf(w, resp)
+                fmt.Fprintf(w, "%s", resp)
                 return
         }</span>
 
@@ -272,23 +273,23 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
                 }
                 <span class="cov8" title="1">infra, err := getInfraRepo(mapping.RepoName)
                 if err != nil </span><span class="cov0" title="0">{
-                        resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf(" %v", err) + "\"}"
+                        resp := ERRMSG + fmt.Sprintf(" %v", err) + "\"}"
                         w.WriteHeader(http.StatusInternalServerError)
-                        fmt.Fprintf(w, resp)
+                        fmt.Fprintf(w, "%s", resp)
                         return
                 }</span>
                 <span class="cov8" title="1">mapping.InfraRepo = infra
                 _, err = makePostRequest(url, APPLICATIONJSON, mapping, con)
                 if err != nil </span><span class="cov8" title="1">{
-                        resp := "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\"" + fmt.Sprintf("Request failed %v", err) + "\"}"
+                        resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
                         w.WriteHeader(http.StatusInternalServerError)
-                        fmt.Fprintf(w, resp)
+                        fmt.Fprintf(w, "%s", resp)
                         return
                 }</span>
                 <span class="cov8" title="1">resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
                 w.WriteHeader(http.StatusOK)
                 con.Debug("Result struct for gitea webhook %v", mapping)
-                fmt.Fprintf(w, string(resp))</span>
+                fmt.Fprintf(w, "%s", string(resp))</span>
         } else<span class="cov0" title="0"> {
                 con.Debug("NOP - no merge or release")
         }</span>
@@ -325,7 +326,7 @@ func getInfraRepo(name string) (string, error) <span class="cov8" title="1">{
 
         repos := strings.Split(os.Getenv("REPO_MAPPING"), "\n")
         prefix := strings.Split(name, "-")
-        for x, _ := range repos </span><span class="cov8" title="1">{
+        for x := range repos </span><span class="cov8" title="1">{
                 if strings.Contains(repos[x], prefix[0]) </span><span class="cov8" title="1">{
                         result = strings.Split(repos[x], "=")[1]
                         break</span>
@@ -360,7 +361,7 @@ func checkEnvar(item string, logger *simple.Logger) error <span class="cov8" tit
                         return fmt.Errorf(fmt.Sprintf("%s envar is mandatory please set it", name))
                 }</span>
 
-                <span class="cov0" title="0">logger.Error(fmt.Sprintf("%s envar is empty please set it", name))</span>
+                <span class="cov8" title="1">logger.Error(fmt.Sprintf("%s envar is empty please set it", name))</span>
         }
         <span class="cov8" title="1">return nil</span>
 }
