@@ -11,7 +11,8 @@ build-dev:
 	GOOS=linux go build -ldflags="-s -w" -o build -tags real./...
 	chmod 755 build/microservice
 	chmod 755 build/uid_entrypoint.sh
-
+verify:
+	golangci-lint run -c .golangci.yaml --deadline=30m
 test:
 	go test -v -coverprofile=tests/results/cover.out -tags fake ./...
 
