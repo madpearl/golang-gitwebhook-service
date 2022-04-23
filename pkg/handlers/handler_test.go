@@ -28,8 +28,10 @@ func TestHandlers(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/api/v2/sys/info/isalive", nil)
-		NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
-		handler := http.HandlerFunc(IsAlive)
+		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			IsAlive(w, r, conn)
+		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
 		if e != nil {

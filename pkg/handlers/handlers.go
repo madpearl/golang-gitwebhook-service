@@ -126,8 +126,9 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 	}
 }
 
-func IsAlive(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "{\"version\":\"v1.0.1\"}")
+func IsAlive(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
+	con.Trace("Request Object", r)
+	fmt.Fprintf(w, "%s", "{\"version\":\"v1.0.1\"}")
 }
 
 // makePostRequest - private utility function for POST

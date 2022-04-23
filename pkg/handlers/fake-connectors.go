@@ -76,7 +76,8 @@ func NewTestConnectors(filename string, code int, force string, logger *simple.L
 		logger.Error(fmt.Sprintf("file data %v\n", err))
 		panic(err)
 	}
-	httpclient := NewHttpTestClient(func(req *http.Request) *http.Response {
+	httpclient := NewHttpTestClient(func(r *http.Request) *http.Response {
+		logger.Trace(fmt.Sprintf("Request Object %v", r))
 		return &http.Response{
 			StatusCode: code,
 			// Send response to be tested

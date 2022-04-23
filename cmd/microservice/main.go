@@ -21,7 +21,9 @@ func startHttpServer(con connectors.Clients) (*http.Server, error) {
 		handlers.SimpleHandler(w, r, con)
 	}).Methods("POST", "OPTIONS")
 
-	r.HandleFunc("/isalive", handlers.IsAlive).Methods("GET", "OPTIONS")
+	r.HandleFunc("/isalive", func(w http.ResponseWriter, r *http.Request) {
+		handlers.IsAlive(w, r, con)
+	}).Methods("GET", "OPTIONS")
 
 	http.Handle("/", r)
 
