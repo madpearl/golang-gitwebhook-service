@@ -1,5 +1,9 @@
 .PHONY: all test build clean
 
+REGISTRY_BASE ?= quay.io/luzuccar
+IMAGE_NAME ?= golang-gitwebhook-service
+IMAGE_VERSION ?= v0.0.1
+
 all: clean test build
 
 build: 
@@ -24,7 +28,7 @@ clean:
 	go clean ./...
 
 container:
-	podman build -t  quay.io/luigizuccarelli/golang-gitwebhook-service:1.16.3 .
+	podman build -t  ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} .
 
 push:
-	podman push --authfile=/home/lzuccarelli/config.json quay.io/luigizuccarelli/golang-gitwebhook-service:1.16.3 
+	podman push --authfile=${HOME}/.docker/config.json ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} 

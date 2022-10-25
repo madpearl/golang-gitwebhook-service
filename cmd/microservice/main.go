@@ -1,3 +1,4 @@
+//go:build real
 // +build real
 
 package main
@@ -14,14 +15,14 @@ import (
 )
 
 func startHttpServer(con connectors.Clients) (*http.Server, error) {
-	srv := &http.Server{Addr: ":" + os.Getenv("SERVER_PORT")}
+	srv := &http.Server{Addr: ":9000"}
 	r := mux.NewRouter()
 
 	r.HandleFunc("/api/v1/service", func(w http.ResponseWriter, r *http.Request) {
-		handlers.SimpleHandler(w, r, con)
+		handlers.WebhookHandler(w, r, con)
 	}).Methods("POST", "OPTIONS")
 
-	r.HandleFunc("/isalive", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/api/v1/isalive", func(w http.ResponseWriter, r *http.Request) {
 		handlers.IsAlive(w, r, con)
 	}).Methods("GET", "OPTIONS")
 

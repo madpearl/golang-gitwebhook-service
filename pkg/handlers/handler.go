@@ -21,7 +21,7 @@ const (
 	ERRMSG          string = "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\""
 )
 
-func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
+func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
 	var git *schema.GiteaSchema
 	var mapping *schema.MapBinding
 	var url string
@@ -29,8 +29,8 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 	body, err := ioutil.ReadAll(r.Body)
 	con.Trace("Input data %s", string(body))
 	if err != nil {
-		con.Error("SimpleHandler could not read body data %v", err)
-		resp := ERRMSG + fmt.Sprintf("\"SimpleHandler could not read body data %v", err) + "\"}"
+		con.Error("WebhookHandler could not read body data %v", err)
+		resp := ERRMSG + fmt.Sprintf("\"WebhookHandler could not read body data %v", err) + "\"}"
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "%s", resp)
 		return
@@ -38,19 +38,19 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 
 	err = json.Unmarshal(body, &git)
 	if err != nil {
-		con.Error("SimpleHandler could not unmarshal to struct %v", err)
-		resp := ERRMSG + fmt.Sprintf("\"SimpleHandler could not unmarshal struct %v", err) + "\"}"
+		con.Error("WebhookHandler could not unmarshal to struct %v", err)
+		resp := ERRMSG + fmt.Sprintf("\"WebhookHandler could not unmarshal struct %v", err) + "\"}"
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "%s", resp)
 		return
 	}
 
-	con.Trace("SimpleHandler WEBHOOK_SECRET : %s : %s:", git.Secret, os.Getenv("WEBHOOK_SECRET"))
+	con.Trace("WebhookHandler WEBHOOK_SECRET : %s : %s:", git.Secret, os.Getenv("WEBHOOK_SECRET"))
 	apikey := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
 	// first check secret
 	if git.Secret != apikey {
-		con.Error("SimpleHandler api secret invalid")
-		resp := ERRMSG + "\"SimpleHandler api secret invalid\"}"
+		con.Error("WebhookHandler api secret invalid")
+		resp := ERRMSG + "\"WebhookHandler api secret invalid\"}"
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "%s", resp)
 		return
@@ -128,7 +128,7 @@ func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Client
 
 func IsAlive(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
 	con.Trace("Request Object", r)
-	fmt.Fprintf(w, "%s", "{\"version\":\"v1.0.1\"}")
+	fmt.Fprintf(w, "%s", "{\"name\":\"golang-gitwebhook-service\",\"version\":\"v0.0.1\"}")
 }
 
 // makePostRequest - private utility function for POST

@@ -1,3 +1,4 @@
+//go:build fake
 // +build fake
 
 package handlers
@@ -20,14 +21,14 @@ func TestHandlers(t *testing.T) {
 
 	var logger = &simple.Logger{Level: "info"}
 
-	os.Setenv("WEBHOOK_SECRET", "Threefld2020")
+	os.Setenv("WEBHOOK_SECRET", "LMZ2020")
 	os.Setenv("REPO_MAPPING", "abc=xyz\ngolang-simple-oc4service=infra-golang\ntest=test")
 
 	t.Run("IsAlive : should pass", func(t *testing.T) {
 		var STATUS int = 200
 
 		rr := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/api/v2/sys/info/isalive", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/isalive", nil)
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			IsAlive(w, r, conn)
@@ -44,7 +45,7 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should pass (post) merge", func(t *testing.T) {
+	t.Run("WebhookHandler : should pass (post) merge", func(t *testing.T) {
 		var STATUS int = 200
 
 		requestPayload, _ := ioutil.ReadFile("../../tests/merge.json")
@@ -52,7 +53,7 @@ func TestHandlers(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
@@ -66,7 +67,7 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should pass (post) uat", func(t *testing.T) {
+	t.Run("WebhookHandler : should pass (post) uat", func(t *testing.T) {
 		var STATUS int = 200
 
 		requestPayload, _ := ioutil.ReadFile("../../tests/uat-release.json")
@@ -74,7 +75,7 @@ func TestHandlers(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
@@ -88,7 +89,7 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should pass (post) prod", func(t *testing.T) {
+	t.Run("WebhookHandler : should pass (post) prod", func(t *testing.T) {
 		var STATUS int = 200
 
 		requestPayload, _ := ioutil.ReadFile("../../tests/prod-release.json")
@@ -96,7 +97,7 @@ func TestHandlers(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
@@ -110,14 +111,14 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should fail (body content error)", func(t *testing.T) {
+	t.Run("WebhookHandler : should fail (body content error)", func(t *testing.T) {
 		var STATUS int = 500
 
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/service", errReader(0))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
@@ -131,14 +132,14 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should fail (json to golang struct error)", func(t *testing.T) {
+	t.Run("WebhookHandler : should fail (json to golang struct error)", func(t *testing.T) {
 		var STATUS int = 500
 
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte("{ bad json")))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
@@ -152,7 +153,7 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should fail (force http error)", func(t *testing.T) {
+	t.Run("WebhookHandler : should fail (force http error)", func(t *testing.T) {
 		var STATUS int = 500
 
 		requestPayload, _ := ioutil.ReadFile("../../tests/prod-release.json")
@@ -160,7 +161,7 @@ func TestHandlers(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "true", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)
@@ -174,7 +175,7 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("SimpleHandler : should fail (api secret)", func(t *testing.T) {
+	t.Run("WebhookHandler : should fail (api secret)", func(t *testing.T) {
 
 		var STATUS int = 500
 		os.Setenv("WEBHOOK_SECRET", "")
@@ -183,7 +184,7 @@ func TestHandlers(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "true", logger)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			SimpleHandler(w, r, conn)
+			WebhookHandler(w, r, conn)
 		})
 		handler.ServeHTTP(rr, req)
 		body, e := ioutil.ReadAll(rr.Body)

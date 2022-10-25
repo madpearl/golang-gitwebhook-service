@@ -1,3 +1,4 @@
+//go:build fake
 // +build fake
 
 package handlers
