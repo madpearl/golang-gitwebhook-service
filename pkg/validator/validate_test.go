@@ -12,7 +12,7 @@ func TestEnvars(t *testing.T) {
 	logger := &simple.Logger{Level: "info"}
 
 	t.Run("ValidateEnvars : should fail", func(t *testing.T) {
-		os.Setenv("SERVER_PORT", "")
+		os.Setenv("URL_DEV", "")
 		err := ValidateEnvars(logger)
 		if err == nil {
 			t.Errorf(fmt.Sprintf("Handler %s returned with no error - got (%v) wanted (%v)", "ValidateEnvars", err, nil))

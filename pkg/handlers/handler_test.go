@@ -45,10 +45,10 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("WebhookHandler : should pass (post) merge", func(t *testing.T) {
+	t.Run("WebhookHandler : should pass (post) pr", func(t *testing.T) {
 		var STATUS int = 200
 
-		requestPayload, _ := ioutil.ReadFile("../../tests/merge.json")
+		requestPayload, _ := ioutil.ReadFile("../../tests/git-payload.txt")
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
@@ -63,7 +63,29 @@ func TestHandlers(t *testing.T) {
 		logger.Trace(fmt.Sprintf("Response %s", string(body)))
 		// ignore errors here
 		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
+		}
+	})
+
+	t.Run("WebhookHandler : should pass (post) publish", func(t *testing.T) {
+		var STATUS int = 200
+
+		requestPayload, _ := ioutil.ReadFile("../../tests/git-payload-published.json")
+		rr := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
+		conn := NewTestConnectors("../../tests/response.json", STATUS, "none", logger)
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			WebhookHandler(w, r, conn)
+		})
+		handler.ServeHTTP(rr, req)
+		body, e := ioutil.ReadAll(rr.Body)
+		if e != nil {
+			t.Fatalf("Should not fail : found error %v", e)
+		}
+		logger.Trace(fmt.Sprintf("Response %s", string(body)))
+		// ignore errors here
+		if rr.Code != STATUS {
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
 		}
 	})
 
@@ -85,7 +107,7 @@ func TestHandlers(t *testing.T) {
 		logger.Trace(fmt.Sprintf("Response %s", string(body)))
 		// ignore errors here
 		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
 		}
 	})
 
@@ -107,7 +129,7 @@ func TestHandlers(t *testing.T) {
 		logger.Trace(fmt.Sprintf("Response %s", string(body)))
 		// ignore errors here
 		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
 		}
 	})
 
@@ -128,7 +150,7 @@ func TestHandlers(t *testing.T) {
 		logger.Trace(fmt.Sprintf("Response %s", string(body)))
 		// ignore errors here
 		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
 		}
 	})
 
@@ -149,14 +171,14 @@ func TestHandlers(t *testing.T) {
 		logger.Trace(fmt.Sprintf("Response %s", string(body)))
 		// ignore errors here
 		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
 		}
 	})
 
 	t.Run("WebhookHandler : should fail (force http error)", func(t *testing.T) {
 		var STATUS int = 500
 
-		requestPayload, _ := ioutil.ReadFile("../../tests/prod-release.json")
+		requestPayload, _ := ioutil.ReadFile("../../tests/git-payload-pr-merged.json")
 		rr := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
 		conn := NewTestConnectors("../../tests/response.json", STATUS, "true", logger)
@@ -171,30 +193,7 @@ func TestHandlers(t *testing.T) {
 		logger.Trace(fmt.Sprintf("Response %s", string(body)))
 		// ignore errors here
 		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
-		}
-	})
-
-	t.Run("WebhookHandler : should fail (api secret)", func(t *testing.T) {
-
-		var STATUS int = 500
-		os.Setenv("WEBHOOK_SECRET", "")
-		requestPayload, _ := ioutil.ReadFile("../../tests/prod-release.json")
-		rr := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/api/v1/service", bytes.NewBuffer([]byte(requestPayload)))
-		conn := NewTestConnectors("../../tests/response.json", STATUS, "true", logger)
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			WebhookHandler(w, r, conn)
-		})
-		handler.ServeHTTP(rr, req)
-		body, e := ioutil.ReadAll(rr.Body)
-		if e != nil {
-			t.Fatalf("Should not fail : found error %v", e)
-		}
-		logger.Trace(fmt.Sprintf("Response %s", string(body)))
-		// ignore errors here
-		if rr.Code != STATUS {
-			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "SimpleHandler ", rr.Code, STATUS))
+			t.Errorf(fmt.Sprintf("Handler %s returned with incorrect status code - got (%d) wanted (%d)", "WebhookHandler ", rr.Code, STATUS))
 		}
 	})
 

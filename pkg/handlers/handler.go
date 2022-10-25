@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -22,12 +24,24 @@ const (
 )
 
 func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
-	var git *schema.GiteaSchema
+	var git *schema.GitSchema
 	var mapping *schema.MapBinding
-	var url string
+	var eventListenerUrl string
+	var payload string
 
 	body, err := ioutil.ReadAll(r.Body)
-	con.Trace("Input data %s", string(body))
+	if strings.Index(string(body), "payload=") != -1 {
+		formatted := strings.Split(string(body), "=")[1]
+		payload, err = url.QueryUnescape(formatted)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+	} else {
+		payload = string(body)
+	}
+
+	con.Trace("Input data %s", payload)
 	if err != nil {
 		con.Error("WebhookHandler could not read body data %v", err)
 		resp := ERRMSG + fmt.Sprintf("\"WebhookHandler could not read body data %v", err) + "\"}"
@@ -36,7 +50,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 		return
 	}
 
-	err = json.Unmarshal(body, &git)
+	err = json.Unmarshal([]byte(payload), &git)
 	if err != nil {
 		con.Error("WebhookHandler could not unmarshal to struct %v", err)
 		resp := ERRMSG + fmt.Sprintf("\"WebhookHandler could not unmarshal struct %v", err) + "\"}"
@@ -45,85 +59,76 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 		return
 	}
 
-	con.Trace("WebhookHandler WEBHOOK_SECRET : %s : %s:", git.Secret, os.Getenv("WEBHOOK_SECRET"))
-	apikey := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
-	// first check secret
-	if git.Secret != apikey {
-		con.Error("WebhookHandler api secret invalid")
-		resp := ERRMSG + "\"WebhookHandler api secret invalid\"}"
+	/*
+		con.Trace("WebhookHandler WEBHOOK_SECRET : %s : %s:", git.Hook.Config.Secret, os.Getenv("WEBHOOK_SECRET"))
+		secret := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
+		// first check secret
+		if git.Hook.Config.Secret != secret {
+			con.Error("WebhookHandler secret invalid")
+			resp := ERRMSG + "\"WebhookHandler secret invalid\"}"
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "%s", resp)
+			return
+		}
+	*/
+
+	con.Debug("Mapping struct %v", git)
+
+	// we now post to our various eventlisteners
+	if git.Action == "closed" {
+		// only post on merged true
+		if git.PullRequest.Merged {
+			// post to the dev eventlistener - for our normal cicd dev build
+			mapping = &schema.MapBinding{
+				RepoUrl:   git.Repository.CloneURL,
+				RepoName:  git.Repository.Name,
+				RepoHash:  git.PullRequest.MergeCommitSha,
+				ActorName: git.PullRequest.User.Login,
+				Message:   git.PullRequest.Title,
+			}
+			eventListenerUrl = os.Getenv("URL_DEV")
+		}
+	}
+
+	if git.Action == "published" {
+		// check for the prerelease field
+		if git.Release.Prerelease {
+			// post to the uat eventlistener
+			mapping = &schema.MapBinding{
+				RepoUrl:    git.Repository.CloneURL,
+				RepoName:   git.Repository.Name,
+				RepoHash:   git.Release.TargetCommitish,
+				ActorName:  git.Release.Author.Login,
+				Message:    git.Release.Name + " " + git.Release.Body,
+				TagVersion: git.Release.TagName,
+			}
+			eventListenerUrl = os.Getenv("URL_UAT")
+		} else {
+			// post to prod eventlistener
+			mapping = &schema.MapBinding{
+				RepoUrl:    git.Repository.CloneURL,
+				RepoName:   git.Repository.Name,
+				RepoHash:   git.Release.TargetCommitish,
+				ActorName:  git.Release.Author.Login,
+				Message:    git.Release.Name + " " + git.Release.Body,
+				TagVersion: git.Release.TagName,
+			}
+			eventListenerUrl = os.Getenv("URL_PROD")
+		}
+	}
+
+	_, err = makePostRequest(eventListenerUrl, APPLICATIONJSON, mapping, con)
+	if err != nil {
+		resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "%s", resp)
 		return
 	}
 
-	con.Debug("Mapping struct %v", git)
-
-	// we now post to our various eventlisteners
-	if git.Action == "published" || git.Action == "closed" {
-		// only post on merged true
-		if git.PullRequest.Merged {
-			// post to the dev eventlistener - for our normal cicd dev build
-			mapping = &schema.MapBinding{
-				RepoUrl:    git.Repository.CloneURL,
-				RepoName:   git.Repository.Name,
-				RepoHash:   git.PullRequest.MergeCommitSha,
-				ActorName:  git.PullRequest.User.Login,
-				ActorEmail: git.PullRequest.User.Email,
-				Message:    git.PullRequest.Title,
-			}
-			url = os.Getenv("URL_DEV")
-		}
-
-		if git.Action == "published" {
-			// check for the prerelease field
-			if git.Release.Prerelease {
-				// post to the uat eventlistener
-				mapping = &schema.MapBinding{
-					RepoUrl:    git.Repository.CloneURL,
-					RepoName:   git.Repository.Name,
-					RepoHash:   git.Release.TargetCommitish,
-					ActorName:  git.Release.Author.Login,
-					ActorEmail: git.Release.Author.Email,
-					Message:    git.Release.Name + " " + git.Release.Body,
-					TagVersion: git.Release.TagName,
-				}
-				url = os.Getenv("URL_UAT")
-			} else {
-				// post to prod eventlistener
-				mapping = &schema.MapBinding{
-					RepoUrl:    git.Repository.CloneURL,
-					RepoName:   git.Repository.Name,
-					RepoHash:   git.Release.TargetCommitish,
-					ActorName:  git.Release.Author.Login,
-					ActorEmail: git.Release.Author.Email,
-					Message:    git.Release.Name + " " + git.Release.Body,
-					TagVersion: git.Release.TagName,
-				}
-				url = os.Getenv("URL_PROD")
-			}
-		}
-		infra, err := getInfraRepo(mapping.RepoName)
-		if err != nil {
-			resp := ERRMSG + fmt.Sprintf(" %v", err) + "\"}"
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "%s", resp)
-			return
-		}
-		mapping.InfraRepo = infra
-		_, err = makePostRequest(url, APPLICATIONJSON, mapping, con)
-		if err != nil {
-			resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "%s", resp)
-			return
-		}
-		resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
-		w.WriteHeader(http.StatusOK)
-		con.Debug("Result struct for gitea webhook %v", mapping)
-		fmt.Fprintf(w, "%s", string(resp))
-	} else {
-		con.Debug("NOP - no merge or release")
-	}
+	resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
+	w.WriteHeader(http.StatusOK)
+	con.Debug("Result struct for git webhook %v", mapping)
+	fmt.Fprintf(w, "%s", string(resp))
 }
 
 func IsAlive(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
@@ -151,21 +156,4 @@ func makePostRequest(url string, contentType string, mb *schema.MapBinding, con 
 	}
 	con.Error("Function makePostRequest response code %v", resp.StatusCode)
 	return []byte("ko"), errors.New(strconv.Itoa(resp.StatusCode))
-}
-
-func getInfraRepo(name string) (string, error) {
-	var result string
-
-	repos := strings.Split(os.Getenv("REPO_MAPPING"), "\n")
-	prefix := strings.Split(name, "-")
-	for x := range repos {
-		if strings.Contains(repos[x], prefix[0]) {
-			result = strings.Split(repos[x], "=")[1]
-			break
-		}
-	}
-	if result == "" {
-		return "", errors.New("Infra repo not found")
-	}
-	return result, nil
 }

@@ -20,7 +20,7 @@ func checkEnvar(item string, logger *simple.Logger) error {
 			return fmt.Errorf(fmt.Sprintf("%s envar is mandatory please set it", name))
 		}
 
-		logger.Error(fmt.Sprintf("%s envar is empty please set it", name))
+		logger.Warn(fmt.Sprintf("%s envar is empty please set it", name))
 	}
 	return nil
 }
@@ -30,14 +30,11 @@ func checkEnvar(item string, logger *simple.Logger) error {
 func ValidateEnvars(logger *simple.Logger) error {
 	items := []string{
 		"LOG_LEVEL,false",
-		"VERSION,true",
-		"SERVER_PORT,true",
-		"NAME,true",
-		"WEBHOOK_SECRET,true",
-		"REPO_MAPPING,true",
+		"WEBHOOK_SECRET,false",
+		"REPO_MAPPING,false",
 		"URL_DEV,true",
-		"URL_UAT,true",
-		"URL_PROD,true",
+		"URL_UAT,false",
+		"URL_PROD,false",
 	}
 	for x := range items {
 		if err := checkEnvar(items[x], logger); err != nil {

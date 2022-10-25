@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/fake-connectors.go (89.5%)</option>
 				
-				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handlers.go (90.2%)</option>
+				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handler.go (93.8%)</option>
 				
 				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (100.0%)</option>
 				
@@ -73,7 +73,8 @@
 		</div>
 		<div id="content">
 		
-		<pre class="file" id="file0" style="display: none">// +build fake
+		<pre class="file" id="file0" style="display: none">//go:build fake
+// +build fake
 
 package handlers
 
@@ -176,7 +177,9 @@ import (
         "errors"
         "fmt"
         "io/ioutil"
+        "log"
         "net/http"
+        "net/url"
         "os"
         "strconv"
         "strings"
@@ -191,114 +194,117 @@ const (
         ERRMSG          string = "{\"status\":\"KO\", \"statuscode\":\"500\",\"message\":\""
 )
 
-func SimpleHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) <span class="cov8" title="1">{
-        var git *schema.GiteaSchema
+func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clients) <span class="cov8" title="1">{
+        var git *schema.GitSchema
         var mapping *schema.MapBinding
-        var url string
+        var eventListenerUrl string
+        var payload string
 
         body, err := ioutil.ReadAll(r.Body)
-        con.Trace("Input data %s", string(body))
+        if strings.Index(string(body), "payload=") != -1 </span><span class="cov8" title="1">{
+                formatted := strings.Split(string(body), "=")[1]
+                payload, err = url.QueryUnescape(formatted)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatal(err)
+                        return
+                }</span>
+        } else<span class="cov8" title="1"> {
+                payload = string(body)
+        }</span>
+
+        <span class="cov8" title="1">con.Trace("Input data %s", payload)
         if err != nil </span><span class="cov8" title="1">{
-                con.Error("SimpleHandler could not read body data %v", err)
-                resp := ERRMSG + fmt.Sprintf("\"SimpleHandler could not read body data %v", err) + "\"}"
+                con.Error("WebhookHandler could not read body data %v", err)
+                resp := ERRMSG + fmt.Sprintf("\"WebhookHandler could not read body data %v", err) + "\"}"
                 w.WriteHeader(http.StatusInternalServerError)
                 fmt.Fprintf(w, "%s", resp)
                 return
         }</span>
 
-        <span class="cov8" title="1">err = json.Unmarshal(body, &amp;git)
+        <span class="cov8" title="1">err = json.Unmarshal([]byte(payload), &amp;git)
         if err != nil </span><span class="cov8" title="1">{
-                con.Error("SimpleHandler could not unmarshal to struct %v", err)
-                resp := ERRMSG + fmt.Sprintf("\"SimpleHandler could not unmarshal struct %v", err) + "\"}"
+                con.Error("WebhookHandler could not unmarshal to struct %v", err)
+                resp := ERRMSG + fmt.Sprintf("\"WebhookHandler could not unmarshal struct %v", err) + "\"}"
                 w.WriteHeader(http.StatusInternalServerError)
                 fmt.Fprintf(w, "%s", resp)
                 return
         }</span>
 
-        <span class="cov8" title="1">con.Trace("SimpleHandler WEBHOOK_SECRET : %s : %s:", git.Secret, os.Getenv("WEBHOOK_SECRET"))
-        apikey := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
-        // first check secret
-        if git.Secret != apikey </span><span class="cov8" title="1">{
-                con.Error("SimpleHandler api secret invalid")
-                resp := ERRMSG + "\"SimpleHandler api secret invalid\"}"
-                w.WriteHeader(http.StatusInternalServerError)
-                fmt.Fprintf(w, "%s", resp)
-                return
-        }</span>
+        /*
+                con.Trace("WebhookHandler WEBHOOK_SECRET : %s : %s:", git.Hook.Config.Secret, os.Getenv("WEBHOOK_SECRET"))
+                secret := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
+                // first check secret
+                if git.Hook.Config.Secret != secret {
+                        con.Error("WebhookHandler secret invalid")
+                        resp := ERRMSG + "\"WebhookHandler secret invalid\"}"
+                        w.WriteHeader(http.StatusInternalServerError)
+                        fmt.Fprintf(w, "%s", resp)
+                        return
+                }
+        */
 
         <span class="cov8" title="1">con.Debug("Mapping struct %v", git)
 
         // we now post to our various eventlisteners
-        if git.Action == "published" || git.Action == "closed" </span><span class="cov8" title="1">{
+        if git.Action == "closed" </span><span class="cov8" title="1">{
                 // only post on merged true
                 if git.PullRequest.Merged </span><span class="cov8" title="1">{
                         // post to the dev eventlistener - for our normal cicd dev build
                         mapping = &amp;schema.MapBinding{
+                                RepoUrl:   git.Repository.CloneURL,
+                                RepoName:  git.Repository.Name,
+                                RepoHash:  git.PullRequest.MergeCommitSha,
+                                ActorName: git.PullRequest.User.Login,
+                                Message:   git.PullRequest.Title,
+                        }
+                        eventListenerUrl = os.Getenv("URL_DEV")
+                }</span>
+        }
+
+        <span class="cov8" title="1">if git.Action == "published" </span><span class="cov8" title="1">{
+                // check for the prerelease field
+                if git.Release.Prerelease </span><span class="cov8" title="1">{
+                        // post to the uat eventlistener
+                        mapping = &amp;schema.MapBinding{
                                 RepoUrl:    git.Repository.CloneURL,
                                 RepoName:   git.Repository.Name,
-                                RepoHash:   git.PullRequest.MergeCommitSha,
-                                ActorName:  git.PullRequest.User.Login,
-                                ActorEmail: git.PullRequest.User.Email,
-                                Message:    git.PullRequest.Title,
+                                RepoHash:   git.Release.TargetCommitish,
+                                ActorName:  git.Release.Author.Login,
+                                Message:    git.Release.Name + " " + git.Release.Body,
+                                TagVersion: git.Release.TagName,
                         }
-                        url = os.Getenv("URL_DEV")
+                        eventListenerUrl = os.Getenv("URL_UAT")
+                }</span> else<span class="cov8" title="1"> {
+                        // post to prod eventlistener
+                        mapping = &amp;schema.MapBinding{
+                                RepoUrl:    git.Repository.CloneURL,
+                                RepoName:   git.Repository.Name,
+                                RepoHash:   git.Release.TargetCommitish,
+                                ActorName:  git.Release.Author.Login,
+                                Message:    git.Release.Name + " " + git.Release.Body,
+                                TagVersion: git.Release.TagName,
+                        }
+                        eventListenerUrl = os.Getenv("URL_PROD")
                 }</span>
+        }
 
-                <span class="cov8" title="1">if git.Action == "published" </span><span class="cov8" title="1">{
-                        // check for the prerelease field
-                        if git.Release.Prerelease </span><span class="cov8" title="1">{
-                                // post to the uat eventlistener
-                                mapping = &amp;schema.MapBinding{
-                                        RepoUrl:    git.Repository.CloneURL,
-                                        RepoName:   git.Repository.Name,
-                                        RepoHash:   git.Release.TargetCommitish,
-                                        ActorName:  git.Release.Author.Login,
-                                        ActorEmail: git.Release.Author.Email,
-                                        Message:    git.Release.Name + " " + git.Release.Body,
-                                        TagVersion: git.Release.TagName,
-                                }
-                                url = os.Getenv("URL_UAT")
-                        }</span> else<span class="cov8" title="1"> {
-                                // post to prod eventlistener
-                                mapping = &amp;schema.MapBinding{
-                                        RepoUrl:    git.Repository.CloneURL,
-                                        RepoName:   git.Repository.Name,
-                                        RepoHash:   git.Release.TargetCommitish,
-                                        ActorName:  git.Release.Author.Login,
-                                        ActorEmail: git.Release.Author.Email,
-                                        Message:    git.Release.Name + " " + git.Release.Body,
-                                        TagVersion: git.Release.TagName,
-                                }
-                                url = os.Getenv("URL_PROD")
-                        }</span>
-                }
-                <span class="cov8" title="1">infra, err := getInfraRepo(mapping.RepoName)
-                if err != nil </span><span class="cov0" title="0">{
-                        resp := ERRMSG + fmt.Sprintf(" %v", err) + "\"}"
-                        w.WriteHeader(http.StatusInternalServerError)
-                        fmt.Fprintf(w, "%s", resp)
-                        return
-                }</span>
-                <span class="cov8" title="1">mapping.InfraRepo = infra
-                _, err = makePostRequest(url, APPLICATIONJSON, mapping, con)
-                if err != nil </span><span class="cov8" title="1">{
-                        resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
-                        w.WriteHeader(http.StatusInternalServerError)
-                        fmt.Fprintf(w, "%s", resp)
-                        return
-                }</span>
-                <span class="cov8" title="1">resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
-                w.WriteHeader(http.StatusOK)
-                con.Debug("Result struct for gitea webhook %v", mapping)
-                fmt.Fprintf(w, "%s", string(resp))</span>
-        } else<span class="cov0" title="0"> {
-                con.Debug("NOP - no merge or release")
+        <span class="cov8" title="1">_, err = makePostRequest(eventListenerUrl, APPLICATIONJSON, mapping, con)
+        if err != nil </span><span class="cov8" title="1">{
+                resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
+                w.WriteHeader(http.StatusInternalServerError)
+                fmt.Fprintf(w, "%s", resp)
+                return
         }</span>
+
+        <span class="cov8" title="1">resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
+        w.WriteHeader(http.StatusOK)
+        con.Debug("Result struct for git webhook %v", mapping)
+        fmt.Fprintf(w, "%s", string(resp))</span>
 }
 
 func IsAlive(w http.ResponseWriter, r *http.Request, con connectors.Clients) <span class="cov8" title="1">{
         con.Trace("Request Object", r)
-        fmt.Fprintf(w, "%s", "{\"version\":\"v1.0.1\"}")
+        fmt.Fprintf(w, "%s", "{\"name\":\"golang-gitwebhook-service\",\"version\":\"v0.0.1\"}")
 }</span>
 
 // makePostRequest - private utility function for POST
@@ -321,23 +327,6 @@ func makePostRequest(url string, contentType string, mb *schema.MapBinding, con 
         }</span>
         <span class="cov0" title="0">con.Error("Function makePostRequest response code %v", resp.StatusCode)
         return []byte("ko"), errors.New(strconv.Itoa(resp.StatusCode))</span>
-}
-
-func getInfraRepo(name string) (string, error) <span class="cov8" title="1">{
-        var result string
-
-        repos := strings.Split(os.Getenv("REPO_MAPPING"), "\n")
-        prefix := strings.Split(name, "-")
-        for x := range repos </span><span class="cov8" title="1">{
-                if strings.Contains(repos[x], prefix[0]) </span><span class="cov8" title="1">{
-                        result = strings.Split(repos[x], "=")[1]
-                        break</span>
-                }
-        }
-        <span class="cov8" title="1">if result == "" </span><span class="cov0" title="0">{
-                return "", errors.New("Infra repo not found")
-        }</span>
-        <span class="cov8" title="1">return result, nil</span>
 }
 </pre>
 		
@@ -363,7 +352,7 @@ func checkEnvar(item string, logger *simple.Logger) error <span class="cov8" tit
                         return fmt.Errorf(fmt.Sprintf("%s envar is mandatory please set it", name))
                 }</span>
 
-                <span class="cov8" title="1">logger.Error(fmt.Sprintf("%s envar is empty please set it", name))</span>
+                <span class="cov8" title="1">logger.Warn(fmt.Sprintf("%s envar is empty please set it", name))</span>
         }
         <span class="cov8" title="1">return nil</span>
 }
@@ -373,14 +362,11 @@ func checkEnvar(item string, logger *simple.Logger) error <span class="cov8" tit
 func ValidateEnvars(logger *simple.Logger) error <span class="cov8" title="1">{
         items := []string{
                 "LOG_LEVEL,false",
-                "VERSION,true",
-                "SERVER_PORT,true",
-                "NAME,true",
-                "WEBHOOK_SECRET,true",
-                "REPO_MAPPING,true",
+                "WEBHOOK_SECRET,false",
+                "REPO_MAPPING,false",
                 "URL_DEV,true",
-                "URL_UAT,true",
-                "URL_PROD,true",
+                "URL_UAT,false",
+                "URL_PROD,false",
         }
         for x := range items </span><span class="cov8" title="1">{
                 if err := checkEnvar(items[x], logger); err != nil </span><span class="cov8" title="1">{
