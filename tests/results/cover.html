@@ -57,9 +57,9 @@
 				
 				<option value="file0">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/fake-connectors.go (89.5%)</option>
 				
-				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handler.go (93.8%)</option>
+				<option value="file1">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/handlers/handler.go (91.0%)</option>
 				
-				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (100.0%)</option>
+				<option value="file2">github.com/luigizuccarelli/golang-gitwebhook-service/pkg/validator/validate.go (92.9%)</option>
 				
 				</select>
 			</div>
@@ -201,7 +201,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
         var payload string
 
         body, err := ioutil.ReadAll(r.Body)
-        if strings.Index(string(body), "payload=") != -1 </span><span class="cov8" title="1">{
+        if strings.Contains(string(body), "payload=") </span><span class="cov8" title="1">{
                 formatted := strings.Split(string(body), "=")[1]
                 payload, err = url.QueryUnescape(formatted)
                 if err != nil </span><span class="cov0" title="0">{
@@ -245,11 +245,23 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 
         <span class="cov8" title="1">con.Debug("Mapping struct %v", git)
 
-        // we now post to our various eventlisteners
-        if git.Action == "closed" </span><span class="cov8" title="1">{
+        // post to the various eventlisteners
+        if len(os.Getenv("PR_OPENED_URL")) &gt; 0 &amp;&amp; git.Action == "opened" </span><span class="cov0" title="0">{
+                // post to the pr_opened eventlistener
+                mapping = &amp;schema.MapBinding{
+                        RepoUrl:   git.Repository.CloneURL,
+                        RepoName:  git.Repository.Name,
+                        RepoHash:  git.PullRequest.Head.Sha,
+                        ActorName: git.PullRequest.User.Login,
+                        Message:   git.PullRequest.Title,
+                }
+                eventListenerUrl = os.Getenv("PR_OPENED_URL")
+        }</span>
+
+        <span class="cov8" title="1">if len(os.Getenv("PR_MERGED_URL")) &gt; 0 &amp;&amp; git.Action == "closed" </span><span class="cov8" title="1">{
                 // only post on merged true
                 if git.PullRequest.Merged </span><span class="cov8" title="1">{
-                        // post to the dev eventlistener - for our normal cicd dev build
+                        // post to the pr+merged eventlistener
                         mapping = &amp;schema.MapBinding{
                                 RepoUrl:   git.Repository.CloneURL,
                                 RepoName:  git.Repository.Name,
@@ -257,14 +269,14 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
                                 ActorName: git.PullRequest.User.Login,
                                 Message:   git.PullRequest.Title,
                         }
-                        eventListenerUrl = os.Getenv("URL_DEV")
+                        eventListenerUrl = os.Getenv("PR_MERGED_URL")
                 }</span>
         }
 
-        <span class="cov8" title="1">if git.Action == "published" </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if (len(os.Getenv("PRERELEASED_URL")) &gt; 0 || len(os.Getenv("RELEASED_URL")) &gt; 0) &amp;&amp; git.Action == "published" </span><span class="cov8" title="1">{
                 // check for the prerelease field
                 if git.Release.Prerelease </span><span class="cov8" title="1">{
-                        // post to the uat eventlistener
+                        // post to the pre_release eventlistener
                         mapping = &amp;schema.MapBinding{
                                 RepoUrl:    git.Repository.CloneURL,
                                 RepoName:   git.Repository.Name,
@@ -273,9 +285,9 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
                                 Message:    git.Release.Name + " " + git.Release.Body,
                                 TagVersion: git.Release.TagName,
                         }
-                        eventListenerUrl = os.Getenv("URL_UAT")
+                        eventListenerUrl = os.Getenv("PRERELEASED_URL")
                 }</span> else<span class="cov8" title="1"> {
-                        // post to prod eventlistener
+                        // post to release eventlistener
                         mapping = &amp;schema.MapBinding{
                                 RepoUrl:    git.Repository.CloneURL,
                                 RepoName:   git.Repository.Name,
@@ -284,7 +296,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
                                 Message:    git.Release.Name + " " + git.Release.Body,
                                 TagVersion: git.Release.TagName,
                         }
-                        eventListenerUrl = os.Getenv("URL_PROD")
+                        eventListenerUrl = os.Getenv("RELEASED_URL")
                 }</span>
         }
 
@@ -352,7 +364,7 @@ func checkEnvar(item string, logger *simple.Logger) error <span class="cov8" tit
                         return fmt.Errorf(fmt.Sprintf("%s envar is mandatory please set it", name))
                 }</span>
 
-                <span class="cov8" title="1">logger.Warn(fmt.Sprintf("%s envar is empty please set it", name))</span>
+                <span class="cov0" title="0">logger.Warn(fmt.Sprintf("%s envar is empty please set it", name))</span>
         }
         <span class="cov8" title="1">return nil</span>
 }
@@ -361,12 +373,13 @@ func checkEnvar(item string, logger *simple.Logger) error <span class="cov8" tit
 // These envars are set via the openshift template
 func ValidateEnvars(logger *simple.Logger) error <span class="cov8" title="1">{
         items := []string{
-                "LOG_LEVEL,false",
+                "LOG_LEVEL,true",
                 "WEBHOOK_SECRET,false",
                 "REPO_MAPPING,false",
-                "URL_DEV,true",
-                "URL_UAT,false",
-                "URL_PROD,false",
+                "PR_OPENED_URL,false",
+                "PR_MERGED_URL,false",
+                "PRERELEASED_URL,false",
+                "RELEASED_URL,false",
         }
         for x := range items </span><span class="cov8" title="1">{
                 if err := checkEnvar(items[x], logger); err != nil </span><span class="cov8" title="1">{

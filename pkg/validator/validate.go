@@ -29,12 +29,13 @@ func checkEnvar(item string, logger *simple.Logger) error {
 // These envars are set via the openshift template
 func ValidateEnvars(logger *simple.Logger) error {
 	items := []string{
-		"LOG_LEVEL,false",
+		"LOG_LEVEL,true",
 		"WEBHOOK_SECRET,false",
 		"REPO_MAPPING,false",
-		"URL_DEV,true",
-		"URL_UAT,false",
-		"URL_PROD,false",
+		"PR_OPENED_URL,false",
+		"PR_MERGED_URL,false",
+		"PRERELEASED_URL,false",
+		"RELEASED_URL,false",
 	}
 	for x := range items {
 		if err := checkEnvar(items[x], logger); err != nil {

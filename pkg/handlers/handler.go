@@ -30,7 +30,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 	var payload string
 
 	body, err := ioutil.ReadAll(r.Body)
-	if strings.Index(string(body), "payload=") != -1 {
+	if strings.Contains(string(body), "payload=") {
 		formatted := strings.Split(string(body), "=")[1]
 		payload, err = url.QueryUnescape(formatted)
 		if err != nil {
@@ -59,26 +59,27 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 		return
 	}
 
-	/*
-		con.Trace("WebhookHandler WEBHOOK_SECRET : %s : %s:", git.Hook.Config.Secret, os.Getenv("WEBHOOK_SECRET"))
-		secret := strings.Trim(os.Getenv("WEBHOOK_SECRET"), "\n")
-		// first check secret
-		if git.Hook.Config.Secret != secret {
-			con.Error("WebhookHandler secret invalid")
-			resp := ERRMSG + "\"WebhookHandler secret invalid\"}"
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "%s", resp)
-			return
-		}
-	*/
-
 	con.Debug("Mapping struct %v", git)
 
-	// we now post to our various eventlisteners
-	if git.Action == "closed" {
+	postRequest := false
+	// post to the various eventlisteners
+	if len(os.Getenv("PR_OPENED_URL")) > 0 && git.Action == "opened" {
+		// post to the pr_opened eventlistener
+		mapping = &schema.MapBinding{
+			RepoUrl:   git.Repository.CloneURL,
+			RepoName:  git.Repository.Name,
+			RepoHash:  git.PullRequest.Head.Sha,
+			ActorName: git.PullRequest.User.Login,
+			Message:   git.PullRequest.Title,
+		}
+		postRequest = true
+		eventListenerUrl = os.Getenv("PR_OPENED_URL")
+	}
+
+	if len(os.Getenv("PR_MERGED_URL")) > 0 && git.Action == "closed" {
 		// only post on merged true
 		if git.PullRequest.Merged {
-			// post to the dev eventlistener - for our normal cicd dev build
+			// post to the pr+merged eventlistener
 			mapping = &schema.MapBinding{
 				RepoUrl:   git.Repository.CloneURL,
 				RepoName:  git.Repository.Name,
@@ -86,14 +87,15 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 				ActorName: git.PullRequest.User.Login,
 				Message:   git.PullRequest.Title,
 			}
-			eventListenerUrl = os.Getenv("URL_DEV")
+			postRequest = true
+			eventListenerUrl = os.Getenv("PR_MERGED_URL")
 		}
 	}
 
-	if git.Action == "published" {
+	if (len(os.Getenv("PRERELEASED_URL")) > 0 || len(os.Getenv("RELEASED_URL")) > 0) && git.Action == "published" {
 		// check for the prerelease field
 		if git.Release.Prerelease {
-			// post to the uat eventlistener
+			// post to the pre_release eventlistener
 			mapping = &schema.MapBinding{
 				RepoUrl:    git.Repository.CloneURL,
 				RepoName:   git.Repository.Name,
@@ -102,9 +104,10 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 				Message:    git.Release.Name + " " + git.Release.Body,
 				TagVersion: git.Release.TagName,
 			}
-			eventListenerUrl = os.Getenv("URL_UAT")
+			postRequest = true
+			eventListenerUrl = os.Getenv("PRERELEASED_URL")
 		} else {
-			// post to prod eventlistener
+			// post to release eventlistener
 			mapping = &schema.MapBinding{
 				RepoUrl:    git.Repository.CloneURL,
 				RepoName:   git.Repository.Name,
@@ -113,22 +116,26 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request, con connectors.Clien
 				Message:    git.Release.Name + " " + git.Release.Body,
 				TagVersion: git.Release.TagName,
 			}
-			eventListenerUrl = os.Getenv("URL_PROD")
+			postRequest = true
+			eventListenerUrl = os.Getenv("RELEASED_URL")
 		}
 	}
 
-	_, err = makePostRequest(eventListenerUrl, APPLICATIONJSON, mapping, con)
-	if err != nil {
-		resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "%s", resp)
-		return
+	if postRequest {
+		_, err = makePostRequest(eventListenerUrl, APPLICATIONJSON, mapping, con)
+		if err != nil {
+			resp := ERRMSG + fmt.Sprintf("\"Request failed %v", err) + "\"}"
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "%s", resp)
+			return
+		}
+		resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
+		w.WriteHeader(http.StatusOK)
+		con.Debug("Result struct for git webhook %v", mapping)
+		fmt.Fprintf(w, "%s", string(resp))
+	} else {
+		con.Info("NOP (opened,merged,release or prerelease action not detected)")
 	}
-
-	resp := "{\"status\":\"OK\", \"statuscode\":\"200\",\"message\":\"Request sent successfully\"}"
-	w.WriteHeader(http.StatusOK)
-	con.Debug("Result struct for git webhook %v", mapping)
-	fmt.Fprintf(w, "%s", string(resp))
 }
 
 func IsAlive(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
@@ -137,13 +144,14 @@ func IsAlive(w http.ResponseWriter, r *http.Request, con connectors.Clients) {
 }
 
 // makePostRequest - private utility function for POST
-func makePostRequest(url string, contentType string, mb *schema.MapBinding, con connectors.Clients) ([]byte, error) {
+func makePostRequest(elUrl string, contentType string, mb *schema.MapBinding, con connectors.Clients) ([]byte, error) {
 	var b []byte
 
 	data, _ := json.MarshalIndent(mb, "", "    ")
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	req, _ := http.NewRequest("POST", elUrl, bytes.NewBuffer(data))
+	con.Debug("Post data to eventListenerUrl : %s", string(data))
 	req.Header.Set(CONTENTTYPE, contentType)
-	con.Info("Function makeRequest %s", url)
+	con.Info("Function makeRequest %s", elUrl)
 	resp, err := con.Do(req)
 	if err != nil {
 		con.Error("Function makePostRequest http request %v", err)

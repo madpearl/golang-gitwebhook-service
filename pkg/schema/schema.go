@@ -57,8 +57,8 @@ type GitSchema struct {
 		Name            string        `json:"name"`
 		Draft           bool          `json:"draft"`
 		Prerelease      bool          `json:"prerelease"`
-		CreatedAt       time.Time     `json:"created_at"`
-		PublishedAt     time.Time     `json:"published_at"`
+		CreatedAt       interface{}   `json:"created_at"`
+		PublishedAt     interface{}   `json:"published_at"`
 		Assets          []interface{} `json:"assets"`
 		TarballURL      string        `json:"tarball_url"`
 		ZipballURL      string        `json:"zipball_url"`
@@ -98,10 +98,10 @@ type GitSchema struct {
 			SiteAdmin         bool   `json:"site_admin"`
 		} `json:"user"`
 		Body               string        `json:"body"`
-		CreatedAt          time.Time     `json:"created_at"`
-		UpdatedAt          time.Time     `json:"updated_at"`
-		ClosedAt           time.Time     `json:"closed_at"`
-		MergedAt           time.Time     `json:"merged_at"`
+		CreatedAt          interface{}   `json:"created_at"`
+		UpdatedAt          interface{}   `json:"updated_at"`
+		ClosedAt           interface{}   `json:"closed_at"`
+		MergedAt           interface{}   `json:"merged_at"`
 		MergeCommitSha     string        `json:"merge_commit_sha"`
 		Assignee           interface{}   `json:"assignee"`
 		Assignees          []interface{} `json:"assignees"`
@@ -205,9 +205,9 @@ type GitSchema struct {
 				LabelsURL                 string        `json:"labels_url"`
 				ReleasesURL               string        `json:"releases_url"`
 				DeploymentsURL            string        `json:"deployments_url"`
-				CreatedAt                 time.Time     `json:"created_at"`
-				UpdatedAt                 time.Time     `json:"updated_at"`
-				PushedAt                  time.Time     `json:"pushed_at"`
+				CreatedAt                 interface{}   `json:"created_at"`
+				UpdatedAt                 interface{}   `json:"updated_at"`
+				PushedAt                  interface{}   `json:"pushed_at"`
 				GitURL                    string        `json:"git_url"`
 				SSHURL                    string        `json:"ssh_url"`
 				CloneURL                  string        `json:"clone_url"`
@@ -341,7 +341,7 @@ type GitSchema struct {
 				ReleasesURL               string        `json:"releases_url"`
 				DeploymentsURL            string        `json:"deployments_url"`
 				CreatedAt                 interface{}   `json:"created_at"`
-				UpdatedAt                 time.Time     `json:"updated_at"`
+				UpdatedAt                 interface{}   `json:"updated_at"`
 				PushedAt                  interface{}   `json:"pushed_at"`
 				GitURL                    string        `json:"git_url"`
 				SSHURL                    string        `json:"ssh_url"`
@@ -512,9 +512,9 @@ type GitSchema struct {
 		LabelsURL                string        `json:"labels_url"`
 		ReleasesURL              string        `json:"releases_url"`
 		DeploymentsURL           string        `json:"deployments_url"`
-		CreatedAt                time.Time     `json:"created_at"`
-		UpdatedAt                time.Time     `json:"updated_at"`
-		PushedAt                 time.Time     `json:"pushed_at"`
+		CreatedAt                interface{}   `json:"created_at"`
+		UpdatedAt                interface{}   `json:"updated_at"`
+		PushedAt                 interface{}   `json:"pushed_at"`
 		GitURL                   string        `json:"git_url"`
 		SSHURL                   string        `json:"ssh_url"`
 		CloneURL                 string        `json:"clone_url"`

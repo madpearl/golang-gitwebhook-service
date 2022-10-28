@@ -12,7 +12,7 @@ func TestEnvars(t *testing.T) {
 	logger := &simple.Logger{Level: "info"}
 
 	t.Run("ValidateEnvars : should fail", func(t *testing.T) {
-		os.Setenv("URL_DEV", "")
+		os.Setenv("LOG_LEVEL", "")
 		err := ValidateEnvars(logger)
 		if err == nil {
 			t.Errorf(fmt.Sprintf("Handler %s returned with no error - got (%v) wanted (%v)", "ValidateEnvars", err, nil))
@@ -21,10 +21,10 @@ func TestEnvars(t *testing.T) {
 
 	t.Run("ValidateEnvars : should pass", func(t *testing.T) {
 		os.Setenv("LOG_LEVEL", "info")
-		os.Setenv("SERVER_PORT", "9000")
-		os.Setenv("URL_DEV", "localhost")
-		os.Setenv("URL_UAT", "localhost")
-		os.Setenv("URL_PROD", "localhost")
+		os.Setenv("PR_OPENED_URL", "localhost")
+		os.Setenv("PR_MERGED_URL", "localhost")
+		os.Setenv("PRERELEASED_URL", "localhost")
+		os.Setenv("RELEASED_URL", "localhost")
 		os.Setenv("VERSION", "1.0.3")
 		os.Setenv("WEBHOOK_SECRET", "ewqewqe")
 		os.Setenv("REPO_MAPPING", "test")

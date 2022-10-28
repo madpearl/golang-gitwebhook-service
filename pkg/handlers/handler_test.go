@@ -21,8 +21,10 @@ func TestHandlers(t *testing.T) {
 
 	var logger = &simple.Logger{Level: "info"}
 
-	os.Setenv("WEBHOOK_SECRET", "LMZ2020")
-	os.Setenv("REPO_MAPPING", "abc=xyz\ngolang-simple-oc4service=infra-golang\ntest=test")
+	os.Setenv("PR_OPENED_URL", "loclahost")
+	os.Setenv("PR_MERGED_URL", "loclahost")
+	os.Setenv("PRERELEASED_URL", "localhost")
+	os.Setenv("RELEASED_URL", "localhost")
 
 	t.Run("IsAlive : should pass", func(t *testing.T) {
 		var STATUS int = 200
