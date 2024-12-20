@@ -27,9 +27,9 @@ clean:
 	rm -rf build/*
 	go clean ./...
 
-container:
-	podman build -t  ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} .
+#container:
+#	podman build -t  ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} .
 
-push:
-	echo ${HOME}/.docker/config.json
-	podman push --authfile=/kaniko/.docker/config.json ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} 
+#push:
+#	echo ${HOME}/.docker/config.json
+#	podman push --authfile=/kaniko/.docker/config.json ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} 
