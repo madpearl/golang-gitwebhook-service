@@ -32,4 +32,4 @@ container:
 
 push:
 	echo ${HOME}/.docker/config.json
-	podman push --authfile=${HOME}/.docker/config.json ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} 
+	podman push --authfile=/kaniko/.docker/config.json ${REGISTRY_BASE}/${IMAGE_NAME}:${IMAGE_VERSION} 
